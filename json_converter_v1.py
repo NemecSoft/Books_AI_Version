@@ -6,7 +6,12 @@ import pandas as pd
 from datetime import datetime
 import types  # 在文件顶部导入types模块
 from openpyxl import load_workbook, Workbook  # 导入openpyxl用于处理Excel模板
-from openpyxl.styles import Alignment, Font, Border, Fill, Protection  # 导入样式类
+# 完整导入所有需要的样式类
+from openpyxl.styles import (
+    Alignment, Font, Border, Side,
+    Fill, Protection, PatternFill, 
+    GradientFill, Color, colors
+)  # 导入所有需要的样式类
 
 class JSONConverterApp:
     def __init__(self, root):
@@ -341,18 +346,110 @@ class JSONConverterApp:
                         new_book = template_book
                         new_worksheet = template_book[template_sheet_name]
                         
-                        # 先清除模板工作表中的所有内容，但保留格式
-                        print("清除模板工作表中的内容，但保留格式...")
-                        max_row = template_worksheet.max_row
+                        # 导入所有必要的样式类
+                        from openpyxl.styles import Font, Border, PatternFill, Protection, Alignment, Side
+                        
+                        # 在清除内容前，先保存第一行的样式
+                        print("保存第一行样式...")
+                        # 存储第一行的样式对象，而不是单元格引用
+                        first_row_styles = []
                         max_col = template_worksheet.max_column
+                        # 确保至少保存4列的样式（我们需要的列数）
+                        for col_idx in range(1, max(5, max_col + 1)):  # 保存至少4列样式
+                            try:
+                                # 获取第一行单元格
+                                template_cell = template_worksheet.cell(row=1, column=col_idx)
+                                # 保存样式的副本，而不是引用
+                                style_copy = {}
+                                
+                                # 单独处理每个样式属性，确保正确复制
+                                if template_cell.font:
+                                    style_copy['font'] = Font(
+                                        name=template_cell.font.name if hasattr(template_cell.font, 'name') else 'Arial',
+                                        size=template_cell.font.size if hasattr(template_cell.font, 'size') else 11,
+                                        bold=template_cell.font.bold if hasattr(template_cell.font, 'bold') else False,
+                                        italic=template_cell.font.italic if hasattr(template_cell.font, 'italic') else False,
+                                        color=template_cell.font.color if hasattr(template_cell.font, 'color') else None,
+                                        underline=template_cell.font.underline if hasattr(template_cell.font, 'underline') else 'none'
+                                    )
+                                else:
+                                    style_copy['font'] = Font()
+                                
+                                # 处理边框
+                                if template_cell.border:
+                                    # 创建新的Side对象而不是调用copy()
+                                    def create_side(side_obj):
+                                        if side_obj and hasattr(side_obj, 'style') and hasattr(side_obj, 'color'):
+                                            return Side(
+                                                style=side_obj.style,
+                                                color=side_obj.color
+                                            )
+                                        return Side()
+                                    
+                                    style_copy['border'] = Border(
+                                        left=create_side(template_cell.border.left) if hasattr(template_cell.border, 'left') else Side(),
+                                        right=create_side(template_cell.border.right) if hasattr(template_cell.border, 'right') else Side(),
+                                        top=create_side(template_cell.border.top) if hasattr(template_cell.border, 'top') else Side(),
+                                        bottom=create_side(template_cell.border.bottom) if hasattr(template_cell.border, 'bottom') else Side(),
+                                        diagonal=template_cell.border.diagonal if hasattr(template_cell.border, 'diagonal') else None,
+                                        diagonal_direction=template_cell.border.diagonal_direction if hasattr(template_cell.border, 'diagonal_direction') else None,
+                                        outline=template_cell.border.outline if hasattr(template_cell.border, 'outline') else False,
+                                        vertical=template_cell.border.vertical if hasattr(template_cell.border, 'vertical') else None,
+                                        horizontal=template_cell.border.horizontal if hasattr(template_cell.border, 'horizontal') else None
+                                    )
+                                else:
+                                    style_copy['border'] = Border()
+                                
+                                # 处理填充
+                                if template_cell.fill:
+                                    style_copy['fill'] = PatternFill(
+                                        patternType=template_cell.fill.patternType if hasattr(template_cell.fill, 'patternType') else None,
+                                        fgColor=template_cell.fill.fgColor if hasattr(template_cell.fill, 'fgColor') else None,
+                                        bgColor=template_cell.fill.bgColor if hasattr(template_cell.fill, 'bgColor') else None
+                                    )
+                                else:
+                                    style_copy['fill'] = PatternFill()
+                                
+                                # 复制其他样式属性
+                                style_copy['number_format'] = template_cell.number_format
+                                
+                                if template_cell.protection:
+                                    style_copy['protection'] = Protection(
+                                        locked=template_cell.protection.locked if hasattr(template_cell.protection, 'locked') else True,
+                                        hidden=template_cell.protection.hidden if hasattr(template_cell.protection, 'hidden') else False
+                                    )
+                                else:
+                                    style_copy['protection'] = Protection()
+                                
+                                if template_cell.alignment:
+                                    style_copy['alignment'] = Alignment(
+                                        horizontal=template_cell.alignment.horizontal if hasattr(template_cell.alignment, 'horizontal') else 'general',
+                                        vertical=template_cell.alignment.vertical if hasattr(template_cell.alignment, 'vertical') else 'bottom',
+                                        textRotation=template_cell.alignment.textRotation if hasattr(template_cell.alignment, 'textRotation') else 0,
+                                        wrapText=True,  # 强制设置文本换行
+                                        shrinkToFit=template_cell.alignment.shrinkToFit if hasattr(template_cell.alignment, 'shrinkToFit') else False,
+                                        indent=template_cell.alignment.indent if hasattr(template_cell.alignment, 'indent') else 0
+                                    )
+                                else:
+                                    style_copy['alignment'] = Alignment(wrapText=True)
+                                
+                                first_row_styles.append(style_copy)
+                                print(f"  保存第{col_idx}列样式: {style_copy['font'].name}")
+                            except Exception as e:
+                                print(f"  保存第{col_idx}列样式时出错: {str(e)}")
+                                # 添加默认样式作为后备
+                                first_row_styles.append({
+                                    'font': Font(),
+                                    'border': Border(),
+                                    'fill': PatternFill(),
+                                    'number_format': 'General',
+                                    'protection': Protection(),
+                                    'alignment': Alignment(wrapText=True)
+                                })
                         
-                        # 清除所有单元格的内容，但保留格式
-                        for row_idx in range(1, max_row + 1):
-                            for col_idx in range(1, max_col + 1):
-                                new_worksheet.cell(row=row_idx, column=col_idx).value = None
-                        
-                        # 确保Font类可用
-                        from openpyxl.styles import Font
+                        # 保存第一行样式后，我们不清除整个工作表，而是直接在写入时覆盖单元格值
+                        # 这样可以避免清除操作对样式的影响
+                        print("保留模板工作表的原始样式结构，准备写入新数据...")
                         
                         # 直接写入数据，不写标题行
                         print(f"使用模板格式导出，数据形状: {df.shape}")
@@ -371,14 +468,143 @@ class JSONConverterApp:
                             print(f"处理后的数据行: {row_list}")
                             print(f"  第一列值类型: {type(row_list[0])}, 值: {row_list[0] if row_list[0] else '空字符串'}")
                         
-                        # 从第一行开始写入数据（因为已经清除了原有内容）
+                        # 强制从第1行开始写入数据
+                        print("======= 关键调试信息 =======")
+                        print("这里是行号设置的关键位置")
                         start_row = 1
-                        print(f"从第{start_row}行开始写入新数据")
+                        print(f"明确设置start_row = {start_row}")
+                        print(f"工作表最大行数: {new_worksheet.max_row}")
+                        print(f"工作表最大列数: {new_worksheet.max_column}")
+                        print("======= 关键调试信息结束 =======")
                         
                         # 修复第一列数据导出问题
-                        for row_idx, row_list in enumerate(processed_data, start=start_row):  # 从start_row开始写入数据
-                            print(f"写入第{row_idx}行，数据: {row_list}")
+                        print(f"准备写入数据，processed_data长度: {len(processed_data)}")
+                        print(f"当前start_row值: {start_row}")
+                        print("======= 开始写入数据循环 =======")
+                        
+                        # 特殊处理：确保第1行被写入
+                        if processed_data:
+                            print("======= 特殊处理：直接写入第1行 =======")
+                            row_list = processed_data[0]
+                            row_idx = 1
+                            print(f"直接写入行号{row_idx}，数据类型: {type(row_list[0])}")
+                            print(f"第一行数据内容: {str(row_list[0])[:20]}...")
                             
+                            # 确保所有四列都被写入，特别是第一列（标题列）
+                            for col_idx in range(1, 5):  # 强制写入4列
+                                # 特别处理第一列，确保使用正确的标题数据
+                                if col_idx == 1:
+                                    # 直接使用row_list中的第一列数据（来自data["title"]）
+                                    if (col_idx - 1) < len(row_list) and row_list[col_idx - 1]:
+                                        cell_value = row_list[col_idx - 1]
+                                        print(f"  第一行 - 使用正确的标题数据: {cell_value[:20]}...")
+                                    else:
+                                        cell_value = "事件标题"
+                                        print(f"  第一行 - 设置默认标题: {cell_value}")
+                                else:
+                                    cell_value = row_list[col_idx - 1] if (col_idx - 1) < len(row_list) else ""
+                                
+                                # 获取或创建单元格
+                                new_cell = new_worksheet.cell(row=row_idx, column=col_idx)
+                                
+                                # 设置单元格值
+                                new_cell.value = cell_value
+                                print(f"  第一行 - 写入单元格({row_idx},{col_idx}): {cell_value[:20] if isinstance(cell_value, str) else cell_value}")
+                                
+                                # 确保第一行始终有样式
+                                try:
+                                    # 优先尝试使用保存的样式
+                                    if col_idx <= len(first_row_styles):
+                                        # 获取保存的样式
+                                        saved_style = first_row_styles[col_idx - 1]
+                                        
+                                        # 应用所有样式属性
+                                        # 创建新的Font对象以确保样式正确应用
+                                        if hasattr(saved_style['font'], 'name'):
+                                            font_obj = Font(
+                                                name=saved_style['font'].name,
+                                                size=saved_style['font'].size if hasattr(saved_style['font'], 'size') else 11,
+                                                bold=saved_style['font'].bold if hasattr(saved_style['font'], 'bold') else False,
+                                                italic=saved_style['font'].italic if hasattr(saved_style['font'], 'italic') else False,
+                                                color=saved_style['font'].color if hasattr(saved_style['font'], 'color') else None
+                                            )
+                                            new_cell.font = font_obj
+                                            print(f"  第一行 - 应用字体样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 创建新的Border对象
+                                        if hasattr(saved_style['border'], 'left'):
+                                            border_obj = Border(
+                                                left=saved_style['border'].left,
+                                                right=saved_style['border'].right,
+                                                top=saved_style['border'].top,
+                                                bottom=saved_style['border'].bottom
+                                            )
+                                            new_cell.border = border_obj
+                                            print(f"  第一行 - 应用边框样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 创建新的Fill对象
+                                        if hasattr(saved_style['fill'], 'patternType'):
+                                            fill_obj = PatternFill(
+                                                start_color=saved_style['fill'].start_color,
+                                                end_color=saved_style['fill'].end_color,
+                                                patternType=saved_style['fill'].patternType
+                                            )
+                                            new_cell.fill = fill_obj
+                                            print(f"  第一行 - 应用填充样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 应用对齐方式 - 确保文本换行
+                                        alignment_obj = Alignment(
+                                            horizontal=saved_style['alignment'].horizontal if hasattr(saved_style['alignment'], 'horizontal') else None,
+                                            vertical=saved_style['alignment'].vertical if hasattr(saved_style['alignment'], 'vertical') else None,
+                                            wrapText=True  # 确保文本换行
+                                        )
+                                        new_cell.alignment = alignment_obj
+                                        
+                                        # 应用其他样式属性
+                                        new_cell.number_format = saved_style['number_format']
+                                        new_cell.protection = saved_style['protection']
+                                        
+                                        print(f"  第一行 - 完成应用第{col_idx}列样式到单元格({row_idx},{col_idx})")
+                                    else:
+                                        # 没有保存的样式，直接设置默认样式
+                                        raise Exception("没有保存的样式，使用默认样式")
+                                except Exception as e:
+                                    print(f"  第一行 - 应用样式到单元格({row_idx},{col_idx})时出错或没有保存的样式: {str(e)}")
+                                    
+                                    # 手动设置默认样式作为备选方案
+                                    try:
+                                        # 手动设置默认样式
+                                        new_cell.font = Font(
+                                            name='SimHei',  # 使用中文字体
+                                            size=12,
+                                            bold=True
+                                        )
+                                        # 确保文本换行
+                                        new_cell.alignment = Alignment(
+                                            horizontal='center',
+                                            vertical='center',
+                                            wrapText=True
+                                        )
+                                        # 设置边框
+                                        side = Side(style='thin', color=colors.BLACK)
+                                        new_cell.border = Border(left=side, right=side, top=side, bottom=side)
+                                        # 设置填充色为浅灰色
+                                        new_cell.fill = PatternFill(
+                                            start_color='F2F2F2', 
+                                            end_color='F2F2F2', 
+                                            patternType='solid'
+                                        )
+                                        print(f"  第一行 - 成功应用默认样式到单元格({row_idx},{col_idx})")
+                                    except Exception as alt_e:
+                                        print(f"  第一行 - 应用默认样式也失败: {str(alt_e)}")
+                        
+                        # 然后写入剩余的数据行（从第2行开始）
+                        print("======= 写入剩余数据行 =======")
+                        for idx in range(1, len(processed_data)):
+                            row_idx = idx + 1  # 行号从2开始
+                            row_list = processed_data[idx]
+                            print(f"写入索引{idx}，行号{row_idx}，数据预览: {str(row_list[0])[:20]}...")
+                               
                             # 确保所有四列都被写入，特别是第一列（标题列）
                             for col_idx in range(1, 5):  # 强制写入4列
                                 # 特别处理第一列，确保使用正确的标题数据
@@ -388,41 +614,67 @@ class JSONConverterApp:
                                         cell_value = row_list[col_idx - 1]
                                         print(f"  使用正确的标题数据: {cell_value[:20]}...")
                                     else:
-                                        cell_value = f"事件{row_idx - start_row + 1}"
-                                        print(f"  警告: 第{row_idx - start_row + 1}行第一列数据为空，设置默认值: {cell_value}")
+                                        cell_value = f"事件{row_idx}"
+                                        print(f"  警告: 第{row_idx}行第一列数据为空，设置默认值: {cell_value}")
                                 else:
                                     cell_value = row_list[col_idx - 1] if (col_idx - 1) < len(row_list) else ""
                                 
-                                # 获取或创建单元格（保留现有样式）
+                                # 获取或创建单元格
                                 new_cell = new_worksheet.cell(row=row_idx, column=col_idx)
                                 
-                                # 只设置值，保留单元格的样式
-                                original_style = new_cell.has_style
+                                # 设置单元格值
                                 new_cell.value = cell_value
                                 print(f"  写入单元格({row_idx},{col_idx}): {cell_value[:20] if isinstance(cell_value, str) else cell_value}")
                                 
-                                # 单元格已经在模板中包含样式，只需确保设置了文本换行
-                                try:
-                                    # 检查单元格是否已经有样式
-                                    if not new_cell.alignment or not new_cell.alignment.wrap_text:
-                                        # 保持其他对齐属性不变，只设置wrap_text
-                                        if new_cell.alignment:
-                                            new_alignment = Alignment(
-                                                horizontal=new_cell.alignment.horizontal if hasattr(new_cell.alignment, 'horizontal') else 'general',
-                                                vertical=new_cell.alignment.vertical if hasattr(new_cell.alignment, 'vertical') else 'bottom',
-                                                textRotation=new_cell.alignment.textRotation if hasattr(new_cell.alignment, 'textRotation') else 0,
-                                                wrapText=True,
-                                                shrinkToFit=new_cell.alignment.shrinkToFit if hasattr(new_cell.alignment, 'shrinkToFit') else False,
-                                                indent=new_cell.alignment.indent if hasattr(new_cell.alignment, 'indent') else 0,
-                                                relativeIndent=new_cell.alignment.relativeIndent if hasattr(new_cell.alignment, 'relativeIndent') else 0,
-                                                justifyLastLine=new_cell.alignment.justifyLastLine if hasattr(new_cell.alignment, 'justifyLastLine') else False,
-                                                readingOrder=new_cell.alignment.readingOrder if hasattr(new_cell.alignment, 'readingOrder') else 0
-                                            )
-                                        else:
-                                            new_alignment = Alignment(wrap_text=True)
-                                        new_cell.alignment = new_alignment
-                                except Exception as e:
-                                    print(f"设置文本换行时出错: ({row_idx},{col_idx}), {str(e)}")
+                                # 从保存的样式中应用到所有行
+                                if col_idx <= len(first_row_styles):
+                                    # 获取保存的样式
+                                    saved_style = first_row_styles[col_idx - 1]
+                                    
+                                    # 应用所有样式属性
+                                    try:
+                                        # 直接应用字体样式
+                                        new_cell.font = saved_style['font']
+                                        print(f"  应用字体样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 直接应用边框样式
+                                        new_cell.border = saved_style['border']
+                                        print(f"  应用边框样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 直接应用填充样式
+                                        new_cell.fill = saved_style['fill']
+                                        print(f"  应用填充样式到单元格({row_idx},{col_idx})")
+                                        
+                                        # 应用其他样式属性
+                                        new_cell.number_format = saved_style['number_format']
+                                        new_cell.protection = saved_style['protection']
+                                        new_cell.alignment = saved_style['alignment']
+                                        
+                                        print(f"  完成应用第{col_idx}列样式到单元格({row_idx},{col_idx})")
+                                    except Exception as e:
+                                        print(f"  应用样式到单元格({row_idx},{col_idx})时出错: {str(e)}")
+                                        
+                                        # 尝试手动设置关键样式属性作为备选方案
+                                        try:
+                                            # 手动设置字体
+                                            if hasattr(saved_style['font'], 'name'):
+                                                new_cell.font = Font(
+                                                    name=saved_style['font'].name,
+                                                    size=saved_style['font'].size if hasattr(saved_style['font'], 'size') else 11,
+                                                    bold=saved_style['font'].bold if hasattr(saved_style['font'], 'bold') else False
+                                                )
+                                            # 确保文本换行
+                                            new_cell.alignment = Alignment(wrapText=True)
+                                            print(f"  应用备选样式成功")
+                                        except Exception:
+                                            pass
+                                else:
+                                    # 如果没有保存的样式，至少确保设置文本换行
+                                    try:
+                                        new_cell.alignment = Alignment(wrapText=True)
+                                        print(f"  为单元格({row_idx},{col_idx})设置默认文本换行")
+                                    except Exception as e:
+                                        print(f"  设置文本换行时出错: ({row_idx},{col_idx}), {str(e)}")
                         
                         # 保存新工作簿
                         new_book.save(file_path)
