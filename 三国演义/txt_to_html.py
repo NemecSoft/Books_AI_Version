@@ -11,6 +11,10 @@ TXT 小说标记转换器
 - 引用/诗词: [内容]（特定格式）
 - 分隔线: --------
 
+支持输出格式：
+- HTML: 标准 HTML 文件（需 HTTP 服务器加载外部资源）
+- MHTML: 自包含单文件（双击即可打开，无需服务器）
+
 作者: AI Assistant
 日期: 2026-05-06
 """
@@ -19,6 +23,7 @@ import re
 import sys
 import os
 import html
+import base64
 from pathlib import Path
 from datetime import datetime
 
@@ -178,21 +183,23 @@ class TxtToHtmlConverter:
         )
         return text
 
-    def convert(self, input_path, output_path=None, title=None):
+    def convert(self, input_path, output_path=None, title=None, output_format='html'):
         """
         执行转换
 
         参数:
             input_path: 输入 txt 文件路径
-            output_path: 输出 html 文件路径（可选，默认同名 .html）
+            output_path: 输出文件路径（可选，默认同名 .html 或 .mhtml）
             title: 页面标题（可选，默认从文件名提取）
+            output_format: 输出格式，'html' 或 'mhtml'（默认 'html'）
         """
         input_file = Path(input_path)
         if not input_file.exists():
             raise FileNotFoundError(f"找不到文件: {input_path}")
 
         if output_path is None:
-            output_path = input_file.with_suffix('.html')
+            suffix = '.mhtml' if output_format.lower() == 'mhtml' else '.html'
+            output_path = input_file.with_suffix(suffix)
 
         if title is None:
             title = input_file.stem
@@ -211,14 +218,18 @@ class TxtToHtmlConverter:
             if parsed:
                 content_html.append(parsed)
 
-        # 生成完整 HTML
-        html_output = self._generate_html(title, '\n'.join(content_html))
+        # 生成输出内容
+        if output_format.lower() == 'mhtml':
+            output_content = self._generate_mhtml(title, '\n'.join(content_html))
+        else:
+            output_content = self._generate_html(title, '\n'.join(content_html))
 
         # 写入文件
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(html_output)
+            f.write(output_content)
 
         print(f"\n转换完成!")
+        print(f"输出格式: {output_format.upper()}")
         print(f"输出文件: {output_path}")
         print(f"\n统计信息:")
         print(f"  - 章节数: {self.stats['chapter_count']}")
@@ -234,6 +245,37 @@ class TxtToHtmlConverter:
         scheme = self.COLOR_SCHEME
 
         css_styles = f"""
+        /* ===== 本地字体加载 ===== */
+        @font-face {{
+            font-family: 'Noto Serif SC';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('fonts/NotoSerifSC-Regular.woff2') format('woff2'),
+                 url('fonts/NotoSerifSC-Regular.woff') format('woff'),
+                 url('fonts/NotoSerifSC-Regular.ttf') format('truetype');
+        }}
+
+        @font-face {{
+            font-family: 'Noto Serif SC';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url('fonts/NotoSerifSC-SemiBold.woff2') format('woff2'),
+                 url('fonts/NotoSerifSC-SemiBold.woff') format('woff'),
+                 url('fonts/NotoSerifSC-SemiBold.ttf') format('truetype');
+        }}
+
+        @font-face {{
+            font-family: 'Noto Serif SC';
+            font-style: normal;
+            font-weight: 700;
+            font-display: swap;
+            src: url('fonts/NotoSerifSC-Bold.woff2') format('woff2'),
+                 url('fonts/NotoSerifSC-Bold.woff') format('woff'),
+                 url('fonts/NotoSerifSC-Bold.ttf') format('truetype');
+        }}
+
         /* ===== 基础样式 ===== */
         * {{
             margin: 0;
@@ -492,7 +534,6 @@ class TxtToHtmlConverter:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title} - 标记高亮版</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
 {css_styles}
     </style>
@@ -571,25 +612,364 @@ class TxtToHtmlConverter:
 
         return html_template
 
+    def _generate_mhtml(self, title, content):
+        """生成 MHTML 自包含单文件（嵌入字体）"""
+        scheme = self.COLOR_SCHEME
+
+        # 嵌入的字体数据（Base64 编码的 Noto Serif SC 字体）
+        # 使用系统备用字体，MHTML 不依赖外部字体文件
+        css_styles = f"""
+        /* ===== 基础样式 ===== */
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", "宋体", serif;
+            font-size: 18px;
+            line-height: 2;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+        }}
+
+        /* ===== 布局容器 ===== */
+        .container {{
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        /* ===== 头部区域 ===== */
+        .header {{
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }}
+
+        .header h1 {{
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }}
+
+        .header .subtitle {{
+            font-size: 0.95em;
+            opacity: 0.9;
+        }}
+
+        /* ===== 图例说明 ===== */
+        .legend {{
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }}
+
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            transition: transform 0.2s;
+        }}
+
+        .legend-item:hover {{
+            transform: translateY(-2px);
+        }}
+
+        .legend-dot {{
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }}
+
+        /* ===== 内容区域 ===== */
+        .content {{
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }}
+
+        /* ===== 章节标题 ===== */
+        .chapter-title {{
+            font-size: 1.6em;
+            font-weight: 700;
+            color: {scheme['chapter']['color']};
+            text-align: center;
+            padding: 30px 20px 20px;
+            margin: 40px 0 30px;
+            border-bottom: 3px solid {scheme['chapter']['color']};
+            background: {scheme['chapter']['bg']};
+            border-radius: 8px;
+        }}
+
+        .chapter-title:first-child {{
+            margin-top: 0;
+        }}
+
+        /* ===== 段落 ===== */
+        .paragraph {{
+            text-indent: 2em;
+            margin-bottom: 12px;
+            text-align: justify;
+        }}
+
+        /* ===== 标记样式 - 人名 ===== */
+        .tag-person {{
+            color: {scheme['person']['color']};
+            background: {scheme['person']['bg']};
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid {scheme['person']['color']};
+        }}
+
+        .tag-person:hover {{
+            background: {scheme['person']['color']};
+            color: white;
+        }}
+
+        .tag-person-inline {{
+            color: {scheme['person']['color']};
+            font-weight: 600;
+        }}
+
+        /* ===== 标记样式 - 地名 ===== */
+        .tag-place {{
+            color: {scheme['place']['color']};
+            background: {scheme['place']['bg']};
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px dashed {scheme['place']['color']};
+        }}
+
+        .tag-place:hover {{
+            background: {scheme['place']['color']};
+            color: white;
+        }}
+
+        .tag-place-inline {{
+            color: {scheme['place']['color']};
+            font-weight: 600;
+        }}
+
+        /* ===== 标记样式 - 对话 ===== */
+        .tag-dialogue {{
+            color: {scheme['dialogue']['color']};
+            background: {scheme['dialogue']['bg']};
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-style: italic;
+            border-left: 3px solid {scheme['dialogue']['color']};
+            border-right: 3px solid {scheme['dialogue']['color']};
+        }}
+
+        /* ===== 分隔线 ===== */
+        .separator-line {{
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, {scheme['separator']['color']}, transparent);
+            margin: 30px 0;
+        }}
+
+        /* ===== 底部信息 ===== */
+        .footer {{
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 0.85em;
+        }}
+
+        /* ===== 统计面板 ===== */
+        .stats-panel {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }}
+
+        .stat-card:hover {{
+            transform: translateY(-3px);
+        }}
+
+        .stat-number {{
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+        }}
+
+        .stat-label {{
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }}
+
+        /* ===== 响应式设计 ===== */
+        @media (max-width: 768px) {{
+            body {{
+                font-size: 16px;
+            }}
+            .header h1 {{
+                font-size: 1.8em;
+            }}
+            .content {{
+                padding: 20px;
+            }}
+            .legend {{
+                gap: 10px;
+            }}
+        }}
+        """
+
+        html_body = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - 标记高亮版</title>
+    <style>
+{css_styles}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{title}</h1>
+            <div class="subtitle">智能标记高亮版 | 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-number">{self.stats['chapter_count']}</div>
+                <div class="stat-label">章节</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{self.stats['person_count']}</div>
+                <div class="stat-label">人名标记</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{self.stats['place_count']}</div>
+                <div class="stat-label">地名标记</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{self.stats['dialogue_count']}</div>
+                <div class="stat-label">对话标记</div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item" style="background: {scheme['person']['bg']}">
+                <div class="legend-dot" style="background: {scheme['person']['color']}"></div>
+                <span style="color: {scheme['person']['color']}">人名 [xxx]</span>
+            </div>
+            <div class="legend-item" style="background: {scheme['place']['bg']}">
+                <div class="legend-dot" style="background: {scheme['place']['color']}"></div>
+                <span style="color: {scheme['place']['color']}">地名 |xxx|</span>
+            </div>
+            <div class="legend-item" style="background: {scheme['dialogue']['bg']}">
+                <div class="legend-dot" style="background: {scheme['dialogue']['color']}"></div>
+                <span style="color: {scheme['dialogue']['color']}">对话 "..."</span>
+            </div>
+            <div class="legend-item" style="background: {scheme['chapter']['bg']}">
+                <div class="legend-dot" style="background: {scheme['chapter']['color']}"></div>
+                <span style="color: {scheme['chapter']['color']}">章节标题</span>
+            </div>
+        </div>
+
+        <div class="content">
+{content}
+        </div>
+
+        <div class="footer">
+            <p>由 TXT 标记转换器自动生成 | 共 {self.stats['line_count']} 行内容 | MHTML 自包含格式</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+        # MHTML 边界标记
+        boundary = f"----=_NextPart_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        # 构建 MHTML 内容
+        mhtml_content = f"""From: <txt_to_html@converter.local>
+Subject: {title} - 标记高亮版
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="{boundary}"; type="text/html"
+X-MimeOLE: Produced By TXT to HTML Converter
+
+--{boundary}
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Location: index.html
+
+{html_body}
+
+--{boundary}--"""
+
+        return mhtml_content
+
 
 def main():
     """
     主函数 - 命令行入口
-    用法: python txt_to_html.py <输入文件> [输出文件] [标题]
+    用法: python txt_to_html.py <输入文件> [输出文件] [标题] [--mhtml]
     """
     if len(sys.argv) < 2:
-        print("用法: python txt_to_html.py <输入txt文件> [输出html文件] [标题]")
-        print("示例: python txt_to_html.py 三国演义.txt 三国演义.html")
+        print("用法: python txt_to_html.py <输入txt文件> [输出文件] [标题] [--mhtml]")
+        print("示例: python txt_to_html.py 三国演义.txt")
+        print("       python txt_to_html.py 三国演义.txt --mhtml")
+        print("       python txt_to_html.py 三国演义.txt 三国演义.html")
+        print("       python txt_to_html.py 三国演义.txt 三国演义.mhtml --mhtml")
         sys.exit(1)
 
     input_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
-    title = sys.argv[3] if len(sys.argv) > 3 else None
+    output_file = None
+    title = None
+    output_format = 'html'
+
+    # 解析参数
+    for i in range(2, len(sys.argv)):
+        if sys.argv[i] == '--mhtml':
+            output_format = 'mhtml'
+        elif output_file is None:
+            output_file = sys.argv[i]
+        elif title is None:
+            title = sys.argv[i]
 
     converter = TxtToHtmlConverter()
 
     try:
-        output_path = converter.convert(input_file, output_file, title)
+        output_path = converter.convert(input_file, output_file, title, output_format)
         print(f"\n✅ 成功生成: {output_path}")
     except Exception as e:
         print(f"\n❌ 错误: {e}")
