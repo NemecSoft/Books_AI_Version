@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九头虫 vs 九头狮</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @font-face {
+            font-family: '方正聚珍新仿';
+            src: url('fonts/方正聚珍新仿 GBK.TTF') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: '字酷堂清楷';
+            src: url('fonts/字酷堂清楷 简.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: '字酷堂清楷', 'SimSun', 'STSong', serif;
+            background: #f5f0e8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #ccc;
+        }
+
+        .title-section {
+            text-align: center;
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .main-title {
+            font-family: '方正聚珍新仿', 'SimSun', serif;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+
+        .comparison-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .col1 {
+            width: 140px;
+            background: #fafafa;
+        }
+
+        .highlight {
+            color: #c00;
+            font-weight: bold;
+        }
+
+        .center-text {
+            text-align: center;
+        }
+
+        .export-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background: #4a7bc4;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #3a6bb4;
+        }
+
+        .export-btn:active {
+            background: #2a5ba4;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+
+        .controls label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .controls input[type="range"] {
+            width: 150px;
+            height: 6px;
+            cursor: pointer;
+        }
+
+        .controls .font-size-display {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .controls button {
+            padding: 6px 12px;
+            font-size: 14px;
+            color: #fff;
+            background: #666;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #555;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label for="font-size-slider">字体大小:</label>
+        <input type="range" id="font-size-slider" min="12" max="24" value="14" step="1">
+        <span class="font-size-display" id="font-size-display">14px</span>
+        <button onclick="resetFontSize()">重置</button>
+    </div>
+
+    <div class="container" id="export-container">
+        <div class="title-section">
+            <h1 class="main-title">九头虫 vs 九头狮</h1>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th class="col1">对比项目</th>
+                    <th class="center-text">西游记 62-63回</th>
+                    <th class="center-text">西游记 88-90回</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col1">回目</td>
+                    <td>62-63回</td>
+                    <td>88-90回</td>
+                </tr>
+                <tr>
+                    <td class="col1">地点</td>
+                    <td>祭赛国</td>
+                    <td>玉华州</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">主妖名</span></td>
+                    <td><span class="highlight">九头虫</span></td>
+                    <td><span class="highlight">九头狮</span></td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">主妖身份</span></td>
+                    <td>妖怪主场：乱石山-碧波潭<br>主妖身份：龙王驸马，外来户</td>
+                    <td>妖怪主场：豹头山-虎口洞<br>主妖身份：黄狮祖翁，后来户</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">起因</span></td>
+                    <td>佛宝被盗<br>佛宝放光眼见喜，引万圣公主（叫驸马）偷取。</td>
+                    <td>兵器被盗<br>兵器放光眼见喜，引黄狮精偷取</td>
+                </tr>
+                <tr>
+                    <td class="col1">被盗物</td>
+                    <td>舍利子佛宝和九叶灵芝草<br>金光霞彩，昼夜光明</td>
+                    <td>兵器<br>晚上放出光芒，钉钯会</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">小妖</span></td>
+                    <td>两个鱼头怪：奔波儿灞，灞波儿奔</td>
+                    <td>两个狼头精：刁钻古怪，古怪刁钻</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">结局</span></td>
+                    <td>结局：惨！烈！灭！族！<br>万圣龙王、万圣公主被悟空、八戒打死<br>龙子龙孙成肉饼<br>龙婆-琵琶骨穿了，锁在塔心柱<br>九头虫-被哮天犬咬后逃了，但一直滴血。</td>
+                    <td>结局：惨！烈！灭！族！<br>黄狮精一家全烧死，战场被打死。<br>狻猊、白泽、猱狮、雪狮、伏狸、抟象全被杀了吃了！<br>九头狮-被狮奴打骂，可见回家也不好过。</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">外援</span></td>
+                    <td>二郎神，二二二</td>
+                    <td>太乙救苦天尊，乙二二。</td>
+                </tr>
+                <tr>
+                    <td class="col1"><span class="highlight">名称</span></td>
+                    <td>万圣龙王</td>
+                    <td>九灵元圣</td>
+                </tr>
+                <tr>
+                    <td class="col1">什么寓意</td>
+                    <td colspan="2">灭、九遇二、归一<br><br>名为圣，不仅名不副其实，反而做盗的事，该灭？<br>屠夫叫镇关西该死？（孔子）过于盗泉，渴矣而不饮，恶其名也。<br>有圣名，没有圣实，反而是圣的反面 "盗""盗" 实。<br>圣人不死，大盗不止。<br>古人的观念，圣与盗，其实是阴阳，正负的关系，就在须臾一念之间，在这里表达关系用的是小妖的两种回旋式名字。<br>曹操，司马懿，在当时，既是国贼，也是国圣。</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <button class="export-btn" onclick="exportImage()">导出2K图片</button>
+    <div class="loading" id="loading">正在生成图片，请稍候...</div>
+
+    <script>
+        const slider = document.getElementById('font-size-slider');
+        const display = document.getElementById('font-size-display');
+        const container = document.getElementById('export-container');
+
+        function updateFontSize(size) {
+            container.style.fontSize = size + 'px';
+            display.textContent = size + 'px';
+        }
+
+        slider.addEventListener('input', function() {
+            updateFontSize(this.value);
+        });
+
+        function resetFontSize() {
+            slider.value = 14;
+            updateFontSize(14);
+        }
+
+        async function exportImage() {
+            const loading = document.getElementById('loading');
+            const btn = document.querySelector('.export-btn');
+
+            btn.style.display = 'none';
+            loading.style.display = 'block';
+
+            try {
+                const canvas = await html2canvas(container, {
+                    scale: 4,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#f5f0e8',
+                    logging: false
+                });
+
+                const link = document.createElement('a');
+                link.download = '九头虫九头狮对比_4K.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                alert('导出失败，请重试');
+                console.error('Export error:', error);
+            } finally {
+                btn.style.display = 'block';
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
